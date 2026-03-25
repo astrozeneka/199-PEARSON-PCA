@@ -14,6 +14,27 @@ library(scPearsonPCA)
 
 larc_obj <- readRDS("../193-SEURAT-HPC/larc_datasets/larc_merged_6k.rds")
 
+# ── Filter to annotated cells & tag source sample ─────────────────────────────
+annotation_files <- list.files(
+  "../191-SPLIT-COSMIX-SAMPLES/splitted/roi_annotated",
+  pattern = "\\.csv$", full.names = TRUE
+)
+
+cell_sample_list <- lapply(annotation_files, function(f) {
+  sname <- basename(f)
+  sname <- sub("^LARC_[AB]_", "", sname)
+  sname <- sub("_annotated\\.csv$", "", sname)
+  df    <- read.csv(f, row.names = 1)
+  data.frame(
+    cell      = rownames(df)[df$selection_mask == 1],
+    sample_id = sname,
+    stringsAsFactors = FALSE
+  )
+})
+
+cell_sample_df <- do.call(rbind, cell_sample_list)
+larc_obj <- subset(larc_obj, cells = cell_sample_df$cell)
+
 
 larc_obj <- NormalizeData(larc_obj)
 
@@ -26,8 +47,7 @@ tc       <- Matrix::colSums(larc_obj[["RNA"]]@counts)
 genefreq <- scPearsonPCA::gene_frequency(larc_obj[["RNA"]]@counts)
 
 # Run Pearson PCA on HVGs using full-gene summary statistics
-pcaobj <-
-scPearsonPCA::sparse_quasipoisson_pca_seurat(
+pcaobj <- scPearsonPCA::sparse_quasipoisson_pca_seurat(
     larc_obj[["RNA"]]@counts[hvgs, ]
   , totalcounts = tc
   , grate       = genefreq[hvgs]
@@ -56,5 +76,6 @@ umapplot <- scPearsonPCA::plot_umap(
   , clustercol = "pearson_clusters"
   , larc_objuse     = larc_obj
 )
+ggsave("plots/umapplot.png", plot = umapplot, width = 8, height = 6, dpi = 300)
 print(umapplot)
 
