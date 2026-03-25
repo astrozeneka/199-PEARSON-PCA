@@ -74,8 +74,32 @@ larc_obj@meta.data$pearson_clusters <- larc_obj@meta.data$seurat_clusters
 umapplot <- scPearsonPCA::plot_umap(
     umapreduc  = "pearsonumap"
   , clustercol = "pearson_clusters"
-  , larc_objuse     = larc_obj
+  , semuse          = larc_obj
 )
 ggsave("plots/umapplot.png", plot = umapplot, width = 8, height = 6, dpi = 300)
 print(umapplot)
 
+# ── Export cell table ─────────────────────────────────────────────────────────
+
+# UMAP embeddings
+umap_df <- as.data.frame(Embeddings(larc_obj[["pearsonumap"]]))
+colnames(umap_df) <- c("umap_1", "umap_2")
+
+# Spatial x/y centroids (merge across all FOVs)
+coords_df <- do.call(rbind, lapply(Images(larc_obj), function(fov) {
+  GetTissueCoordinates(larc_obj[[fov]], which = "centroids")
+}))
+rownames(coords_df) <- coords_df$cell
+
+# Assemble final table: x / y / umap_1 / umap_2 / cluster
+cell_table <- data.frame(
+  cell    = rownames(umap_df),
+  x       = coords_df[rownames(umap_df), "x"],
+  y       = coords_df[rownames(umap_df), "y"],
+  umap_1  = umap_df$umap_1,
+  umap_2  = umap_df$umap_2,
+  cluster = larc_obj@meta.data[rownames(umap_df), "pearson_clusters"],
+  stringsAsFactors = FALSE
+)
+
+write.csv(cell_table, "data/cell_coordinates.csv", row.names = FALSE)
