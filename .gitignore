@@ -1,0 +1,8 @@
+.claude/
+.idea/
+Dockerfile
+data/
+pca.txt
+plots/
+splitted/
+*.txt

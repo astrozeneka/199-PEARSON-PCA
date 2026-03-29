@@ -12,19 +12,15 @@ if __name__ == '__main__':
     clinical_df.set_index('SampleId', inplace=True)
     patient_response = clinical_df['pCR'].to_dict()
 
-    sample_by_cell = {}
-    for file in glob(SPLITTED_META_DIR):
-        patient_id = basename(file).replace(".csv", "")
-        #if patient_id not in patient_response:
-        #    print(f"WARNING: no clinical data for {patient_id} — skipping.")
-        #    continue
-        # response = patient_response[patient_id]
-        cell_ids = pd.read_csv(file, usecols=[0], index_col=0).index
-        for cell_id in cell_ids:
-            sample_by_cell[cell_id] = patient_id
+    files = glob(SPLITTED_META_DIR)
+    meta_frames = [
+        pd.read_csv(f, usecols=[0], index_col=0).assign(SampleId=basename(f).replace(".csv", ""))
+        for f in files
+    ]
+    cell_to_sample = pd.concat(meta_frames)["SampleId"].to_dict()
 
     # read the main df
     df = pd.read_csv("data/cell_coordinates.csv")
-    df["SampleId"] = df["cell_id"].map(sample_by_cell)
+    df["SampleId"] = df["cell"].map(cell_to_sample)
     df.to_csv("data/cell_coordinates_with_sample.csv", index=False)
     print("Saved: data/cell_coordinates_with_sample.csv")

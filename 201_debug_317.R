@@ -70,3 +70,34 @@ umapplot <- scPearsonPCA::plot_umap(
 ggsave("plots/umapplot_S19_31776B1.png", plot = umapplot, width = 8, height = 6, dpi = 300)
 print(umapplot)
 
+# ── Export cell table ─────────────────────────────────────────────────────────
+
+# UMAP embeddings
+umap_df <- as.data.frame(Embeddings(larc_obj[["pearsonumap"]]))
+colnames(umap_df) <- c("umap_1", "umap_2")
+
+# Spatial x/y from original annotated CSVs (x_slide_mm / y_slide_mm)
+coords_df <- do.call(rbind, lapply(annotation_files, function(f) {
+  df <- read.csv(f, row.names = 1)
+  data.frame(
+    cell = rownames(df),
+    x    = df$x_slide_mm,
+    y    = df$y_slide_mm,
+    stringsAsFactors = FALSE
+  )
+}))
+rownames(coords_df) <- coords_df$cell
+
+# Assemble final table
+cell_table <- data.frame(
+  cell    = rownames(umap_df),
+  x       = coords_df[rownames(umap_df), "x"],
+  y       = coords_df[rownames(umap_df), "y"],
+  umap_1  = umap_df$umap_1,
+  umap_2  = umap_df$umap_2,
+  cluster = larc_obj@meta.data[rownames(umap_df), "pearson_clusters"],
+  stringsAsFactors = FALSE
+)
+
+write.csv(cell_table, "data/cell_coordinates_S19_31776B1.csv", row.names = FALSE)
+cat("Exported", nrow(cell_table), "cells to data/cell_coordinates_S19_31776B1.csv\n")

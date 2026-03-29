@@ -85,9 +85,15 @@ print(umapplot)
 umap_df <- as.data.frame(Embeddings(larc_obj[["pearsonumap"]]))
 colnames(umap_df) <- c("umap_1", "umap_2")
 
-# Spatial x/y centroids (merge across all FOVs)
-coords_df <- do.call(rbind, lapply(Images(larc_obj), function(fov) {
-  GetTissueCoordinates(larc_obj[[fov]], which = "centroids")
+# Spatial x/y from original annotated CSVs (x_slide_mm / y_slide_mm)
+coords_df <- do.call(rbind, lapply(annotation_files, function(f) {
+  df <- read.csv(f, row.names = 1)
+  data.frame(
+    cell = rownames(df),
+    x    = df$x_slide_mm,
+    y    = df$y_slide_mm,
+    stringsAsFactors = FALSE
+  )
 }))
 rownames(coords_df) <- coords_df$cell
 
@@ -102,4 +108,4 @@ cell_table <- data.frame(
   stringsAsFactors = FALSE
 )
 
-write.csv(cell_table, "data/cell_coordinates.csv", row.names = FALSE)
+write.csv(cell_table, "data/cell_coordinates_v2.csv", row.names = FALSE)
